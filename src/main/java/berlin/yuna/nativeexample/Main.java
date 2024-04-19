@@ -1,10 +1,10 @@
 package berlin.yuna.nativeexample;
 
 import com.sun.net.httpserver.HttpExchange;
-import de.yuna.berlin.nativeapp.core.Nano;
-import de.yuna.berlin.nativeapp.helper.logger.logic.LogQueue;
-import de.yuna.berlin.nativeapp.services.http.HttpService;
-import de.yuna.berlin.nativeapp.services.metric.logic.MetricService;
+import berlin.yuna.nano.core.Nano;
+import berlin.yuna.nano.helper.logger.logic.LogQueue;
+import berlin.yuna.nano.services.http.HttpService;
+import berlin.yuna.nano.services.metric.logic.MetricService;
 
 import java.lang.management.ManagementFactory;
 import java.nio.charset.Charset;
@@ -13,12 +13,12 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.TimeZone;
 
-import static de.yuna.berlin.nativeapp.core.model.Config.*;
-import static de.yuna.berlin.nativeapp.core.model.NanoThread.activeCarrierThreads;
-import static de.yuna.berlin.nativeapp.core.model.NanoThread.activeNanoThreads;
-import static de.yuna.berlin.nativeapp.helper.event.model.EventType.EVENT_APP_UNHANDLED;
-import static de.yuna.berlin.nativeapp.helper.event.model.EventType.EVENT_HTTP_REQUEST;
-import static de.yuna.berlin.nativeapp.helper.logger.model.LogLevel.DEBUG;
+import static berlin.yuna.nano.core.model.Config.*;
+import static berlin.yuna.nano.core.model.NanoThread.activeCarrierThreads;
+import static berlin.yuna.nano.core.model.NanoThread.activeNanoThreads;
+import static berlin.yuna.nano.helper.event.model.EventType.EVENT_APP_UNHANDLED;
+import static berlin.yuna.nano.helper.event.model.EventType.EVENT_HTTP_REQUEST;
+import static berlin.yuna.nano.helper.logger.model.LogLevel.DEBUG;
 
 public class Main {
 
@@ -31,19 +31,19 @@ public class Main {
 
         nano.newContext(Main.class)
             // print unexpected errors
-            .addEventListener(EVENT_APP_UNHANDLED, event -> event.context().logger().fatal(event.payload(Throwable.class), () -> "Unexpected error at [{}]", event.payload()))
+            .subscribeEvent(EVENT_APP_UNHANDLED, event -> event.context().logger().fatal(event.payload(Throwable.class), () -> "Unexpected error at [{}]", event.payload()))
             // HTTP Endpoints
-            .addEventListener(EVENT_HTTP_REQUEST, event -> event.payloadOpt(HttpExchange.class)
+            .subscribeEvent(EVENT_HTTP_REQUEST, event -> event.payloadOpt(HttpExchange.class)
                 .filter(request -> "GET".equals(request.getRequestMethod()))
                 .filter(request -> "/hello".equals(request.getRequestURI().getPath()))
                 .ifPresent(request -> event.response(new HttpService.HttpResponse(200, event.context().get(String.class, "user_name").getBytes(), null)))
             )
-            .addEventListener(EVENT_HTTP_REQUEST, event -> event.payloadOpt(HttpExchange.class)
+            .subscribeEvent(EVENT_HTTP_REQUEST, event -> event.payloadOpt(HttpExchange.class)
                 .filter(request -> "GET".equals(request.getRequestMethod()))
                 .filter(request -> "/prometheus".equals(request.getRequestURI().getPath()))
                 .ifPresent(request -> event.response(new HttpService.HttpResponse(200, event.context().service(MetricService.class).metrics().prometheus().getBytes(), null)))
             )
-            .addEventListener(EVENT_HTTP_REQUEST, event -> event.payloadOpt(HttpExchange.class)
+            .subscribeEvent(EVENT_HTTP_REQUEST, event -> event.payloadOpt(HttpExchange.class)
                 .filter(request -> "GET".equals(request.getRequestMethod()))
                 .filter(request -> "/info".equals(request.getRequestURI().getPath()))
                 .ifPresent(request -> event.response(new HttpService.HttpResponse(200, ("{\n"
