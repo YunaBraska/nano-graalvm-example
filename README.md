@@ -16,7 +16,7 @@ This example starts a nano service with following endpoints [`GET /info`, `GET /
 
 ```shell
     native-image \
-    -H:Name=native-executable \
+    -H:Name=app.native \
     -cp your-application-classpath berlin.yuna.nativeexample.Main
 ```
 
@@ -28,9 +28,19 @@ This example starts a nano service with following endpoints [`GET /info`, `GET /
     --no-fallback \
     --no-server \
     --initialize-at-build-time \
-    -H:Name=native-executable \
+    -H:Name=app.native \
     -cp your-application-classpath berlin.yuna.nativeexample.Main
 ```
+* docker
+  * Build `docker build -t app-native -f Dockerfile .` 
+  * Build & Binary (target/app.native) `docker build -t app-native -f Dockerfile . && docker build --target export . --output target` 
+  * Build & Run `docker build -t app-native -f Dockerfile . && docker run --rm -p 8080:8080 app-native`
+* docker multi-arch
+  * List available architectures `docker buildx ls` or `docker buildx inspect --bootstrap | grep Platforms | while read -r line; do echo "${line#*:}"; done | tr -d '[:space:]'`
+  * Build `docker buildx build --platform linux/amd64,linux/arm64,linux/386 -t app-native -f Dockerfile .`
+  * Build & Binary (target/app.native) `docker buildx build --platform linux/arm64 -t app-native -f Dockerfile . && docker buildx build --platform linux/arm64 --target export . --output target`
+  * Build & Run `docker buildx build --platform linux/arm64 -t app-native -f Dockerfile . && docker run --rm -p 8080:8080 app-native`
+
 
 ### GraalVM parameter explanation
 
@@ -39,9 +49,11 @@ This example starts a nano service with following endpoints [`GET /info`, `GET /
 | `--no-fallback`                         | Disables the fallback feature, ensuring that the native image doesn't include the JVM. This results in a smaller, more efficient executable but requires all code to be fully native-image compatible.                                       |
 | `--initialize-at-build-time`            | Instructs GraalVM to initialize specified classes at build time rather than at runtime. This can improve startup time but requires careful management of class initialization to avoid errors.                                               |
 | `--initialize-at-run-time=<class-name>` | Specifies classes to be initialized at runtime instead of at build time. This is useful for classes that perform operations during initialization that must occur at runtime, such as loading native libraries or reading system properties. |
-| `-H:Name=native-executable`             | Sets the name of the generated executable file.                                                                                                                                                                                              |
+| `-H:Name=app.native`                    | Sets the name of the generated executable file.                                                                                                                                                                                              |
 | `-cp "<class-path>"`                    | Specifies the classpath, which includes paths to all classes and libraries that your application depends on. Separate multiple paths with `:` on Unix-like systems or `;` on Windows.                                                        |
 | `<main-class>`                          | The fully qualified name of your main class. This is the entry point of your application.                                                                                                                                                    |
+
+[visit all options](https://www.graalvm.org/latest/reference-manual/native-image/overview/Options/)
 
 ### Endpoints Examples
 

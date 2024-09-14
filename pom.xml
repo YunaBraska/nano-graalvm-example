@@ -16,22 +16,26 @@
         <project.reporting.outputEncoding>${project.encoding}</project.reporting.outputEncoding>
 
         <!-- PRODUCTION -->
-        <nano.version>0.0.1</nano.version>
+        <nano.version>2024.0.0</nano.version>
 
         <!-- BUILD -->
         <maven-compiler-plugin.version>3.13.0</maven-compiler-plugin.version>
         <native-image-maven-plugin.version>21.2.0</native-image-maven-plugin.version>
+        <maven.compiler.source>${java-version}</maven.compiler.source>
+        <maven.compiler.target>${java-version}</maven.compiler.target>
+        <maven.compiler.release>${java-version}</maven.compiler.release>
     </properties>
 
     <dependencies>
         <dependency>
-            <groupId>berlin.yuna</groupId>
+            <groupId>org.nanonative</groupId>
             <artifactId>nano</artifactId>
             <version>${nano.version}</version>
         </dependency>
     </dependencies>
 
     <build>
+        <finalName>nano</finalName>
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -41,6 +45,52 @@
                     <source>${java-version}</source>
                     <target>${java-version}</target>
                 </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-shade-plugin</artifactId>
+                <version>3.4.1</version>
+                <executions>
+                    <execution>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>shade</goal>
+                        </goals>
+                        <configuration>
+                            <createDependencyReducedPom>false</createDependencyReducedPom>
+                            <transformers>
+                                <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+                                    <mainClass>your.main.ClassHere</mainClass>
+                                </transformer>
+                            </transformers>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-assembly-plugin</artifactId>
+                <version>3.6.0</version>
+                <configuration>
+                    <archive>
+                        <manifest>
+                            <mainClass>berlin.yuna.nativeexample.Main</mainClass>
+                        </manifest>
+                    </archive>
+                    <descriptorRefs>
+                        <descriptorRef>jar-with-dependencies</descriptorRef>
+                    </descriptorRefs>
+                    <appendAssemblyId>false</appendAssemblyId>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>make-assembly</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>single</goal>
+                        </goals>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>
@@ -56,7 +106,7 @@
                         <artifactId>native-image-maven-plugin</artifactId>
                         <version>${native-image-maven-plugin.version}</version>
                         <configuration>
-                            <imageName>native-executable</imageName>
+                            <imageName>nano.native</imageName>
                             <mainClass>berlin.yuna.nativeexample.Main</mainClass>
                             <buildArgs>
                                 <!-- Reduces the image size - Ensures the native image doesn't include the JVM as a fallback option -->
@@ -65,6 +115,20 @@
                                 <buildArg>--no-server</buildArg>
                                 <!-- Improve startup time - Initialize classes at build time rather than at runtime -->
                                 <buildArg>--initialize-at-build-time</buildArg>
+                                <!-- Aggressively remove unused code -->
+                                <buildArg>--allow-incomplete-classpath</buildArg>
+                                <!-- Install exit handlers to properly handle app termination -->
+                                <buildArg>--install-exit-handlers</buildArg>
+                                <!-- Report unsupported elements at runtime not at build time -->
+                                <buildArg>--report-unsupported-elements-at-runtime</buildArg>
+                                <!-- epsilon = if you don’t want garbage collection at all -->
+                                <!-- serial = if you need basic garbage collection -->
+                                <!-- Default Serial garbage collector -->
+                                <buildArg>--gc=serial</buildArg>
+                                <!-- compatibility = for best compatibility-->
+                                <!-- native = for best performance for machine with the same CPU features -->
+                                <!-- Defaults to x86-64-v3 on AMD64 and armv8-a on AArch64 -->
+                                <!-- <buildArg>-march=native</buildArg>-->
                             </buildArgs>
                         </configuration>
                         <executions>

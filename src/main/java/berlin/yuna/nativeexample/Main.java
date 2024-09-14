@@ -1,24 +1,23 @@
 package berlin.yuna.nativeexample;
 
-import com.sun.net.httpserver.HttpExchange;
-import berlin.yuna.nano.core.Nano;
-import berlin.yuna.nano.helper.logger.logic.LogQueue;
-import berlin.yuna.nano.services.http.HttpService;
-import berlin.yuna.nano.services.metric.logic.MetricService;
+import org.nanonative.nano.core.Nano;
+import org.nanonative.nano.services.http.HttpService;
+import org.nanonative.nano.services.http.model.HttpObject;
+import berlin.yuna.typemap.model.LinkedTypeMap;
+import org.nanonative.nano.services.metric.logic.MetricService;
 
 import java.lang.management.ManagementFactory;
 import java.nio.charset.Charset;
-import java.util.Collection;
-import java.util.Locale;
-import java.util.Map;
-import java.util.TimeZone;
+import java.time.Instant;
+import java.util.*;
 
-import static berlin.yuna.nano.core.model.Config.*;
-import static berlin.yuna.nano.core.model.NanoThread.activeCarrierThreads;
-import static berlin.yuna.nano.core.model.NanoThread.activeNanoThreads;
-import static berlin.yuna.nano.helper.event.model.EventType.EVENT_APP_UNHANDLED;
-import static berlin.yuna.nano.helper.event.model.EventType.EVENT_HTTP_REQUEST;
-import static berlin.yuna.nano.helper.logger.model.LogLevel.DEBUG;
+import static org.nanonative.nano.core.model.Context.CONFIG_LOG_FORMATTER;
+import static org.nanonative.nano.core.model.Context.CONFIG_LOG_LEVEL;
+import static org.nanonative.nano.core.model.NanoThread.activeCarrierThreads;
+import static org.nanonative.nano.core.model.NanoThread.activeNanoThreads;
+import static org.nanonative.nano.helper.logger.model.LogLevel.DEBUG;
+import static org.nanonative.nano.services.http.HttpService.CONFIG_SERVICE_HTTP_PORT;
+import static org.nanonative.nano.services.http.HttpService.EVENT_HTTP_REQUEST;
 
 public class Main {
 
@@ -26,27 +25,60 @@ public class Main {
         final Nano nano = new Nano(Map.of(
             CONFIG_LOG_LEVEL, DEBUG, // or "OFF", "FATAL", "ERROR", "WARN", "INFO", "DEBUG", "TRACE", "ALL"
             CONFIG_LOG_FORMATTER, "console", // or "json"
-            CONFIG_SERVICE_HTTP_PORT, "8080" // or any other port
-        ), new MetricService(), new LogQueue(), new HttpService());
+            CONFIG_SERVICE_HTTP_PORT, "8081" // or any other port
+        ), new MetricService(), new HttpService());
 
-        nano.newContext(Main.class)
-            // print unexpected errors
-            .subscribeEvent(EVENT_APP_UNHANDLED, event -> event.context().logger().fatal(event.payload(Throwable.class), () -> "Unexpected error at [{}]", event.payload()))
-            // HTTP Endpoints
-            .subscribeEvent(EVENT_HTTP_REQUEST, event -> event.payloadOpt(HttpExchange.class)
-                .filter(request -> "GET".equals(request.getRequestMethod()))
-                .filter(request -> "/hello".equals(request.getRequestURI().getPath()))
-                .ifPresent(request -> event.response(new HttpService.HttpResponse(200, event.context().get(String.class, "user_name").getBytes(), null)))
+        nano.context(Main.class)
+
+            // HTTP Auth
+            .subscribeEvent(EVENT_HTTP_REQUEST, event -> event.payloadOpt(HttpObject.class)
+                .filter(request -> request.pathMatch("/api/**"))
+                .ifPresent(request -> {
+                    if (!request.authToken().equals("dummy_token"))
+                        request.response().statusCode(403).body(Map.of(
+                            "id", request.bodyAsJson().getOpt(UUID.class, "id").orElse(UUID.randomUUID()),
+                            "message", "Unauthorized access",
+                            "timestamp", Instant.now()
+                        )).respond(event);
+                    else
+                        event.cache().put("username", System.getProperty("user.name"));
+                })
             )
-            .subscribeEvent(EVENT_HTTP_REQUEST, event -> event.payloadOpt(HttpExchange.class)
-                .filter(request -> "GET".equals(request.getRequestMethod()))
-                .filter(request -> "/prometheus".equals(request.getRequestURI().getPath()))
-                .ifPresent(request -> event.response(new HttpService.HttpResponse(200, event.context().service(MetricService.class).metrics().prometheus().getBytes(), null)))
+
+
+
+
+
+
+
+
+
+
+
+
+            // HTTP /apt/data
+            .subscribeEvent(EVENT_HTTP_REQUEST, event -> event.payloadOpt(HttpObject.class)
+                .filter(HttpObject::isMethodPost)
+                .filter(request -> request.pathMatch("/api/data"))
+                .ifPresent(request -> {
+                    final LinkedTypeMap data = request.bodyAsJson().getMap();
+                    data.put("memory", nano.heapMemoryUsage());
+                    event.context().logger().info(() -> "Received data: {}", data);
+                    request.response()
+                        .statusCode(200)
+                        .body(data.putReturn("username", event.cache().get(String.class, "username")))
+                        .respond(event);
+                })
             )
-            .subscribeEvent(EVENT_HTTP_REQUEST, event -> event.payloadOpt(HttpExchange.class)
-                .filter(request -> "GET".equals(request.getRequestMethod()))
-                .filter(request -> "/info".equals(request.getRequestURI().getPath()))
-                .ifPresent(request -> event.response(new HttpService.HttpResponse(200, ("{\n"
+
+            .subscribeEvent(EVENT_HTTP_REQUEST, event -> event.payloadOpt(HttpObject.class)
+                .filter(HttpObject::isMethodGet)
+                .filter(request -> request.pathMatch("/hello"))
+                .ifPresent(request -> request.response().statusCode(200).body(Map.of("name", event.context().get(String.class, "user_name"))).respond(event)))
+            .subscribeEvent(EVENT_HTTP_REQUEST, event -> event.payloadOpt(HttpObject.class)
+                .filter(HttpObject::isMethodGet)
+                .filter(request -> request.pathMatch("/info"))
+                .ifPresent(request -> request.response().statusCode(200).body("{\n"
                     + "  \"status\": \"" + (nano.isReady() ? "UP" : "DOWN") + "\",\n"
                     + "  \"pid\": \"" + nano.pid() + "\",\n"
                     + "  \"services\": \"" + nano.services().size() + "\",\n"
@@ -64,10 +96,8 @@ public class Main {
                     + "  \"java\": \"" + event.context().get(String.class, "java_version") + "\",\n"
                     + "  \"arch\": \"" + event.context().get(String.class, "os_arch") + "\",\n"
                     + "  \"os\": \"" + event.context().get(String.class, "os_name") + " - " + event.context().get(String.class, "os_version") + "\"\n"
-                    + "}").getBytes(), null)))
-            )
+                    + "}").respond(event)))
         ;
-
     }
 }
 
