@@ -2,13 +2,13 @@
 
 Demonstrating the integration of [Nano](https://github.com/YunaBraska/nano) with GraalVM for creating efficient native executables, showcasing optimal
 configurations and techniques for leveraging nano in high-performance, low-footprint applications.
-This example starts a nano service with following endpoints [`GET /info`, `GET /hello`, `GET /prometheus`].
+This example starts a nano service with following endpoints [`GET /info`, `GET /hello`, `GET /metrics/prometheus`, `GET /api/data`, `GET /load1`].
 
 ### Requirements
 
 * `Graalvm` >= 21.0.0 in `$JAVA_HOME` environment variable
 
-### Native Builds
+### Native CLI Builds
 
 * Maven build native executable _(see [pom file](pom.xml))_: `./mvnw clean package -Pnative`
 * CLI minimal _(
@@ -31,6 +31,9 @@ This example starts a nano service with following endpoints [`GET /info`, `GET /
     -H:Name=app.native \
     -cp your-application-classpath berlin.yuna.nativeexample.Main
 ```
+
+### Native Docker Builds
+
 * docker
   * Build `docker build -t app-native -f Dockerfile .` 
   * Build & Binary (target/app.native) `docker build -t app-native -f Dockerfile . && docker build --target export . --output target` 

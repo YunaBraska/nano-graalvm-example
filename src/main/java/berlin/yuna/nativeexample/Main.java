@@ -1,9 +1,9 @@
 package berlin.yuna.nativeexample;
 
+import berlin.yuna.typemap.model.LinkedTypeMap;
 import org.nanonative.nano.core.Nano;
 import org.nanonative.nano.services.http.HttpService;
 import org.nanonative.nano.services.http.model.HttpObject;
-import berlin.yuna.typemap.model.LinkedTypeMap;
 import org.nanonative.nano.services.metric.logic.MetricService;
 
 import java.lang.management.ManagementFactory;
@@ -15,6 +15,7 @@ import static org.nanonative.nano.core.model.Context.CONFIG_LOG_FORMATTER;
 import static org.nanonative.nano.core.model.Context.CONFIG_LOG_LEVEL;
 import static org.nanonative.nano.core.model.NanoThread.activeCarrierThreads;
 import static org.nanonative.nano.core.model.NanoThread.activeNanoThreads;
+import static org.nanonative.nano.helper.NanoUtils.formatDuration;
 import static org.nanonative.nano.helper.logger.model.LogLevel.DEBUG;
 import static org.nanonative.nano.services.http.HttpService.CONFIG_SERVICE_HTTP_PORT;
 import static org.nanonative.nano.services.http.HttpService.EVENT_HTTP_REQUEST;
@@ -34,7 +35,7 @@ public class Main {
             .subscribeEvent(EVENT_HTTP_REQUEST, event -> event.payloadOpt(HttpObject.class)
                 .filter(request -> request.pathMatch("/api/**"))
                 .ifPresent(request -> {
-                    if (!request.authToken().equals("dummy_token"))
+                    if (request.authToken() == null || !request.authToken().equals("dummy_token"))
                         request.response().statusCode(403).body(Map.of(
                             "id", request.bodyAsJson().getOpt(UUID.class, "id").orElse(UUID.randomUUID()),
                             "message", "Unauthorized access",
@@ -45,18 +46,7 @@ public class Main {
                 })
             )
 
-
-
-
-
-
-
-
-
-
-
-
-            // HTTP /apt/data
+            // HTTP /api/data - mirrors data
             .subscribeEvent(EVENT_HTTP_REQUEST, event -> event.payloadOpt(HttpObject.class)
                 .filter(HttpObject::isMethodPost)
                 .filter(request -> request.pathMatch("/api/data"))
@@ -71,10 +61,34 @@ public class Main {
                 })
             )
 
+            //HTTP /api/load - starts heavy load
+            .subscribeEvent(EVENT_HTTP_REQUEST, event -> event.payloadOpt(HttpObject.class)
+                .filter(HttpObject::isMethodGet)
+                .filter(request -> request.pathMatch("/load1"))
+                .ifPresent(request -> {
+                    final int size = request.queryParams().getOpt(Integer.class, "load")
+                        .or(() -> request.bodyAsJson().getMap().getOpt(Integer.class, "load"))
+                        .orElse(100_000_00);  // Oh, the sweet chaos
+                    long start = System.currentTimeMillis();
+                    Arrays.sort(new Random().ints(size, 0, 1_000_000).toArray());  // May the JVM have mercy
+                    event.context().logger().info(() -> "Testing load [{}]", size);
+                    request.response()
+                        .statusCode(200)
+                        .body(Map.of(
+                            "load", size,
+                            "duration", formatDuration(System.currentTimeMillis() - start)
+                        ))
+                        .respond(event);
+                })
+            )
+
+            // HTTP /hello
             .subscribeEvent(EVENT_HTTP_REQUEST, event -> event.payloadOpt(HttpObject.class)
                 .filter(HttpObject::isMethodGet)
                 .filter(request -> request.pathMatch("/hello"))
                 .ifPresent(request -> request.response().statusCode(200).body(Map.of("name", event.context().get(String.class, "user_name"))).respond(event)))
+
+            // HTTP /info
             .subscribeEvent(EVENT_HTTP_REQUEST, event -> event.payloadOpt(HttpObject.class)
                 .filter(HttpObject::isMethodGet)
                 .filter(request -> request.pathMatch("/info"))
