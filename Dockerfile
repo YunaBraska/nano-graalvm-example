@@ -29,19 +29,19 @@ COPY mvnw pom.xml ./
 
 # BUILD THE NATIVE IMAGE
 # [SYSTEM] ocker build -t app-native -f Dockerfile .
-# [ARCH] docker buildx build --platform linux/amd64,linux/arm64,linux/386 -t app-native -f Dockerfile .
+# [ARCH] docker buildx build --platform linux/amd64,linux/arm64,linux/386 --output type=docker -t app-native -f Dockerfile .
 FROM copy_sources AS native_build
 RUN (chmod +x mvnw && JAVA_HOME="${GRAALVM_HOME}" ./mvnw clean package -B -q -DskipTests -Pnative)
 
 # USED TO EXPORT THE NATIVE IMAGE
 # [SYSTEM] docker build -t app-native -f Dockerfile . && docker build --target export . --output target
-# [ARCH] docker buildx build --platform linux/arm64 -t app-native -f Dockerfile . && docker buildx build --platform linux/arm64 --target export . --output target
+# [ARCH] docker buildx build --platform linux/arm64 --output type=docker -t app-native -f Dockerfile . && docker buildx build --platform linux/arm64 --target export . --output target
 FROM scratch AS export
 COPY --from=native_build ./target/*.native ./app.native
 
 # RUN THE NATIVE IMAGE
 # [SYSTEM] docker build -t app-native -f Dockerfile . && docker run --rm -p 8080:8080 app-native
-# [ARCH] docker buildx build --platform linux/arm64 -t app-native -f Dockerfile . && docker run --rm -p 8080:8080 app-native
+# [ARCH] docker buildx build --platform linux/arm64 --output type=docker -t app-native -f Dockerfile . && docker run --rm -p 8080:8080 app-native
 FROM debian:bookworm-slim AS native_image
 COPY --from=native_build ./target/*.native ./app.native
 EXPOSE 8080

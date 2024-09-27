@@ -26,7 +26,7 @@ public class Main {
         final Nano nano = new Nano(Map.of(
             CONFIG_LOG_LEVEL, DEBUG, // or "OFF", "FATAL", "ERROR", "WARN", "INFO", "DEBUG", "TRACE", "ALL"
             CONFIG_LOG_FORMATTER, "console", // or "json"
-            CONFIG_SERVICE_HTTP_PORT, "8081" // or any other port
+            CONFIG_SERVICE_HTTP_PORT, "8080" // or any other port
         ), new MetricService(), new HttpService());
 
         nano.context(Main.class)
