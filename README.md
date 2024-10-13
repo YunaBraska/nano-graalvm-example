@@ -40,9 +40,9 @@ This example starts a nano service with following endpoints [`GET /info`, `GET /
   * Build & Run `docker build -t app-native -f Dockerfile . && docker run --rm -p 8080:8080 app-native`
 * docker multi-arch
   * List available architectures `docker buildx ls` or `docker buildx inspect --bootstrap | grep Platforms | while read -r line; do echo "${line#*:}"; done | tr -d '[:space:]'`
-  * Build `docker buildx build --platform linux/amd64,linux/arm64,linux/386 -t app-native -f Dockerfile .`
-  * Build & Binary (target/app.native) `docker buildx build --platform linux/arm64 -t app-native -f Dockerfile . && docker buildx build --platform linux/arm64 --target export . --output target`
-  * Build & Run `docker buildx build --platform linux/arm64 -t app-native -f Dockerfile . && docker run --rm -p 8080:8080 app-native`
+  * Build `docker buildx build --platform linux/amd64 -t app-native -f Dockerfile --load .`
+  * Build & Binary (target/app.native) `docker buildx build --platform linux/amd64 --output type=docker -t app-native -f Dockerfile . && docker buildx build --platform linux/arm64 --target export .  --output target`
+  * Build & Run `docker buildx build --platform linux/amd64 -t app-native -f Dockerfile --load . && docker run --rm -p 8080:8080 app-native`
 
 
 ### GraalVM parameter explanation

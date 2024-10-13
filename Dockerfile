@@ -10,7 +10,7 @@ ENV ARM64="https://github.com/graalvm/graalvm-ce-builds/releases/download/jdk-21
 
 # Prerequisites: https://www.graalvm.org/latest/reference-manual/native-image/#prerequisites
 RUN set -eux; \
-    GRAALVM_DOWNLOAD_URL=$(if [ "$(uname -m)" = "x86_64" ]; then echo "${AMD64}"; elif [ "$(uname -m)" = "aarch64" ]; then echo "${ARM64}"; else echo "Unsupported architecture [$(uname -m)]" && exit 1; fi) \
+    GRAALVM_DOWNLOAD_URL=$(if [ "$(uname -m)" = "aarch64" ]; then echo "${ARM64}"; else echo "${AMD64}"; fi) \
 	&& mkdir -p "${GRAALVM_HOME}" \
     && apt-get -y update -qqy  \
     && apt-get -y install -qqy curl \
@@ -29,19 +29,19 @@ COPY mvnw pom.xml ./
 
 # BUILD THE NATIVE IMAGE
 # [SYSTEM] ocker build -t app-native -f Dockerfile .
-# [ARCH] docker buildx build --platform linux/amd64,linux/arm64,linux/386 --output type=docker -t app-native -f Dockerfile .
+# [ARCH] docker buildx build --platform linux/amd64 -t app-native -f Dockerfile --load .
 FROM copy_sources AS native_build
 RUN (chmod +x mvnw && JAVA_HOME="${GRAALVM_HOME}" ./mvnw clean package -B -q -DskipTests -Pnative)
 
 # USED TO EXPORT THE NATIVE IMAGE
 # [SYSTEM] docker build -t app-native -f Dockerfile . && docker build --target export . --output target
-# [ARCH] docker buildx build --platform linux/arm64 --output type=docker -t app-native -f Dockerfile . && docker buildx build --platform linux/arm64 --target export . --output target
+# [ARCH] docker buildx build --platform linux/amd64 --output type=docker -t app-native -f Dockerfile . && docker buildx build --platform linux/arm64 --target export .  --output target
 FROM scratch AS export
 COPY --from=native_build ./target/*.native ./app.native
 
 # RUN THE NATIVE IMAGE
 # [SYSTEM] docker build -t app-native -f Dockerfile . && docker run --rm -p 8080:8080 app-native
-# [ARCH] docker buildx build --platform linux/arm64 --output type=docker -t app-native -f Dockerfile . && docker run --rm -p 8080:8080 app-native
+# [ARCH] docker buildx build --platform linux/amd64 -t app-native -f Dockerfile --load . && docker run --rm -p 8080:8080 app-native
 FROM debian:bookworm-slim AS native_image
 COPY --from=native_build ./target/*.native ./app.native
 EXPOSE 8080
