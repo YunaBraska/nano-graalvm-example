@@ -1,0 +1,48 @@
+# LINUX AMD64 && ARM64
+# Community Images: https://github.com/graalvm/container/pkgs/container/native-image
+# Releases: https://github.com/graalvm/graalvm-ce-builds/releases/
+FROM alpine:3.18 AS graalvm_setup
+ENV GRAALVM_HOME="/usr/local/graalvm"
+ENV JAVA_VERSION="21"
+
+# Releases: https://github.com/graalvm/graalvm-ce-builds/releases/
+ENV AMD64="https://github.com/graalvm/graalvm-ce-builds/releases/download/jdk-21.0.2/graalvm-community-jdk-21.0.2_linux-x64_bin.tar.gz"
+ENV ARM64="https://github.com/graalvm/graalvm-ce-builds/releases/download/jdk-21.0.2/graalvm-community-jdk-21.0.2_linux-aarch64_bin.tar.gz"
+
+# Prerequisites: https://www.graalvm.org/latest/reference-manual/native-image/#prerequisites
+# glibc: https://github.com/sgerrand/alpine-pkg-glibc
+RUN set -eux; \
+    GRAALVM_DOWNLOAD_URL=$(if [ "$(uname -m)" = "aarch64" ]; then echo "${ARM64}"; else echo "${AMD64}"; fi) \
+    && mkdir -p "${GRAALVM_HOME}" \
+    && apk add --no-cache gcompat libstdc++ wget curl build-base zlib-dev \
+    && wget -q -O /etc/apk/keys/sgerrand.rsa.pub https://alpine-pkgs.sgerrand.com/sgerrand.rsa.pub \
+    && wget https://github.com/sgerrand/alpine-pkg-glibc/releases/download/2.35-r1/glibc-2.35-r1.apk \
+    && apk add glibc-2.35-r1.apk \
+    && curl -sSL -o graalvm.tar.gz ${GRAALVM_DOWNLOAD_URL} \
+    && tar -zxf graalvm.tar.gz -C "${GRAALVM_HOME}" --strip-components 1 \
+    && ls -la "${GRAALVM_HOME}/bin" \
+    && ${GRAALVM_HOME}/bin/java -version \
+    && rm -f graalvm.tar.gz
+
+# BUILD THE NATIVE IMAGE
+# [SYSTEM] docker build -t app-native -f Dockerfile .
+# [ARCH] docker buildx build --platform linux/amd64 -t app-native -f Dockerfile --load .
+FROM graalvm_setup AS native_build
+COPY src ./src
+COPY .mvn ./.mvn
+COPY mvnw pom.xml ./
+RUN (chmod +x mvnw && JAVA_HOME="${GRAALVM_HOME}" ./mvnw clean package -B -q -DskipTests -Pnative)
+
+# USED TO EXPORT THE NATIVE IMAGE
+# [SYSTEM] docker build -t app-native -f Dockerfile . && docker build --target export . --output target
+# [ARCH] docker buildx build --platform linux/amd64 --output type=docker -t app-native -f Dockerfile . && docker buildx build --platform linux/arm64 --target export .  --output target
+FROM scratch AS export
+COPY --from=native_build ./target/*.native ./app.native
+
+# RUN THE NATIVE IMAGE
+# [SYSTEM] docker build -t app-native -f Dockerfile . && docker run --rm -p 8080:8080 app-native
+# [ARCH] docker buildx build --platform linux/amd64 -t app-native -f Dockerfile --load . && docker run --rm -p 8080:8080 app-native
+FROM alpine:3.18 AS native_image
+COPY --from=native_build ./target/*.native ./app.native
+EXPOSE 8080
+ENTRYPOINT ["./app.native"]
