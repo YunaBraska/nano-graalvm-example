@@ -16,7 +16,7 @@
         <project.reporting.outputEncoding>${project.encoding}</project.reporting.outputEncoding>
 
         <!-- PRODUCTION -->
-        <nano.version>2024.0.0</nano.version>
+        <nano.version>2024.0.5</nano.version>
 
         <!-- BUILD -->
         <maven-compiler-plugin.version>3.13.0</maven-compiler-plugin.version>
@@ -35,7 +35,7 @@
     </dependencies>
 
     <build>
-        <finalName>nano</finalName>
+        <finalName>${project.name}-no-dependencies</finalName>
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -48,27 +48,6 @@
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-shade-plugin</artifactId>
-                <version>3.4.1</version>
-                <executions>
-                    <execution>
-                        <phase>package</phase>
-                        <goals>
-                            <goal>shade</goal>
-                        </goals>
-                        <configuration>
-                            <createDependencyReducedPom>false</createDependencyReducedPom>
-                            <transformers>
-                                <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-                                    <mainClass>your.main.ClassHere</mainClass>
-                                </transformer>
-                            </transformers>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-assembly-plugin</artifactId>
                 <version>3.6.0</version>
                 <configuration>
@@ -77,10 +56,6 @@
                             <mainClass>berlin.yuna.nativeexample.Main</mainClass>
                         </manifest>
                     </archive>
-                    <descriptorRefs>
-                        <descriptorRef>jar-with-dependencies</descriptorRef>
-                    </descriptorRefs>
-                    <appendAssemblyId>false</appendAssemblyId>
                 </configuration>
                 <executions>
                     <execution>
@@ -89,6 +64,13 @@
                         <goals>
                             <goal>single</goal>
                         </goals>
+                        <configuration>
+                            <finalName>${project.name}</finalName>
+                            <descriptorRefs>
+                                <descriptorRef>jar-with-dependencies</descriptorRef>
+                            </descriptorRefs>
+                            <appendAssemblyId>false</appendAssemblyId>
+                        </configuration>
                     </execution>
                 </executions>
             </plugin>
@@ -106,7 +88,7 @@
                         <artifactId>native-maven-plugin</artifactId>
                         <version>${native-image-maven-plugin.version}</version>
                         <configuration>
-                            <imageName>nano.native</imageName>
+                            <imageName>${project.name}.native</imageName>
                             <mainClass>berlin.yuna.nativeexample.Main</mainClass>
                             <buildArgs>
                                 <!-- Reduces the image size - Ensures the native image doesn't include the JVM as a fallback option -->
@@ -134,7 +116,7 @@
                         <executions>
                             <execution>
                                 <goals>
-                                    <goal>build</goal>
+                                    <goal>compile-no-fork</goal>
                                 </goals>
                                 <phase>package</phase>
                             </execution>

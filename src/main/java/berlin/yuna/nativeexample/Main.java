@@ -51,7 +51,7 @@ public class Main {
                 .filter(HttpObject::isMethodPost)
                 .filter(request -> request.pathMatch("/api/data"))
                 .ifPresent(request -> {
-                    final LinkedTypeMap data = request.bodyAsJson().getMap();
+                    final LinkedTypeMap data = request.bodyAsJson().asMap();
                     data.put("memory", nano.heapMemoryUsage());
                     event.context().logger().info(() -> "Received data: {}", data);
                     request.response()
@@ -67,7 +67,7 @@ public class Main {
                 .filter(request -> request.pathMatch("/load1"))
                 .ifPresent(request -> {
                     final int size = request.queryParams().getOpt(Integer.class, "load")
-                        .or(() -> request.bodyAsJson().getMap().getOpt(Integer.class, "load"))
+                        .or(() -> request.bodyAsJson().asMap().getOpt(Integer.class, "load"))
                         .orElse(100_000_00);  // Oh, the sweet chaos
                     long start = System.currentTimeMillis();
                     Arrays.sort(new Random().ints(size, 0, 1_000_000).toArray());  // May the JVM have mercy
