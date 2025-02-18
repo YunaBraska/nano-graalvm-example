@@ -37,7 +37,7 @@ public class Main {
                 .ifPresent(request -> {
                     if (request.authToken() == null || !request.authToken().equals("dummy_token"))
                         request.response().statusCode(403).body(Map.of(
-                            "id", request.bodyAsJson().getOpt(UUID.class, "id").orElse(UUID.randomUUID()),
+                            "id", request.bodyAsJson().asUUIDOpt("id").orElse(UUID.randomUUID()),
                             "message", "Unauthorized access",
                             "timestamp", Instant.now()
                         )).respond(event);
@@ -50,15 +50,12 @@ public class Main {
             .subscribeEvent(EVENT_HTTP_REQUEST, event -> event.payloadOpt(HttpObject.class)
                 .filter(HttpObject::isMethodPost)
                 .filter(request -> request.pathMatch("/api/data"))
-                .ifPresent(request -> {
-                    final LinkedTypeMap data = request.bodyAsJson().asMap();
-                    data.put("memory", nano.heapMemoryUsage());
-                    event.context().logger().info(() -> "Received data: {}", data);
-                    request.response()
-                        .statusCode(200)
-                        .body(data.putReturn("username", event.cache().get(String.class, "username")))
-                        .respond(event);
-                })
+                .ifPresent(request -> request.response()
+                    .statusCode(200)
+                    .body(request.bodyAsJson().asMap()
+                        .putR("username", event.cache().asString("username"))
+                        .putR("memory", nano.heapMemoryUsage())
+                    ).respond(event))
             )
 
             //HTTP /api/load - starts heavy load
@@ -66,11 +63,11 @@ public class Main {
                 .filter(HttpObject::isMethodGet)
                 .filter(request -> request.pathMatch("/load1"))
                 .ifPresent(request -> {
-                    final int size = request.queryParams().getOpt(Integer.class, "load")
-                        .or(() -> request.bodyAsJson().asMap().getOpt(Integer.class, "load"))
+                    final int size = request.queryParams().asIntOpt("load")
+                        .or(() -> request.bodyAsJson().asMap().asInt("load"))
                         .orElse(100_000_00);  // Oh, the sweet chaos
                     long start = System.currentTimeMillis();
-                    Arrays.sort(new Random().ints(size, 0, 1_000_000).toArray());  // May the JVM have mercy
+                    Arrays.sort(new Random().ints(size, 0, 1_000_000).toArray()); // May the JVM have mercy
                     event.context().logger().info(() -> "Testing load [{}]", size);
                     request.response()
                         .statusCode(200)
@@ -86,31 +83,30 @@ public class Main {
             .subscribeEvent(EVENT_HTTP_REQUEST, event -> event.payloadOpt(HttpObject.class)
                 .filter(HttpObject::isMethodGet)
                 .filter(request -> request.pathMatch("/hello"))
-                .ifPresent(request -> request.response().statusCode(200).body(Map.of("name", event.context().get(String.class, "user_name"))).respond(event)))
+                .ifPresent(request -> request.response().statusCode(200).body(Map.of("name", event.context().asString("user_name"))).respond(event)))
 
             // HTTP /info
             .subscribeEvent(EVENT_HTTP_REQUEST, event -> event.payloadOpt(HttpObject.class)
                 .filter(HttpObject::isMethodGet)
                 .filter(request -> request.pathMatch("/info"))
-                .ifPresent(request -> request.response().statusCode(200).body("{\n"
-                    + "  \"status\": \"" + (nano.isReady() ? "UP" : "DOWN") + "\",\n"
-                    + "  \"pid\": \"" + nano.pid() + "\",\n"
-                    + "  \"services\": \"" + nano.services().size() + "\",\n"
-                    + "  \"schedulers\": \"" + nano.schedulers().size() + "\",\n"
-                    + "  \"listeners\": \"" + nano.listeners().values().stream().mapToLong(Collection::size).sum() + "\",\n"
-                    + "  \"cores\": \"" + Runtime.getRuntime().availableProcessors() + "\",\n"
-                    + "  \"usedMemory\": \"" + nano.usedMemoryMB() + "mb\",\n"
-                    + "  \"threadsNano\": \"" + activeNanoThreads() + "\",\n"
-                    + "  \"threadsActive\": \"" + activeCarrierThreads() + "\",\n"
-                    + "  \"threadsOther\": \"" + (ManagementFactory.getThreadMXBean().getThreadCount() - activeCarrierThreads()) + "\",\n"
-                    + "  \"encoding\": \"" + Charset.defaultCharset() + "\",\n"
-                    + "  \"timezone\": \"" + TimeZone.getDefault().getID() + "\",\n"
-                    + "  \"locale\": \"" + Locale.getDefault() + "\",\n"
-                    + "  \"user\": \"" + event.context().get(String.class, "user_name") + "\",\n"
-                    + "  \"java\": \"" + event.context().get(String.class, "java_version") + "\",\n"
-                    + "  \"arch\": \"" + event.context().get(String.class, "os_arch") + "\",\n"
-                    + "  \"os\": \"" + event.context().get(String.class, "os_name") + " - " + event.context().get(String.class, "os_version") + "\"\n"
-                    + "}").respond(event)))
+                .ifPresent(request -> request.response().statusCode(200).body(new LinkedTypeMap()
+                    .putR("status", nano.isReady() ? "UP" : "DOWN")
+                    .putR("pid", nano.pid())
+                    .putR("services", nano.services().size())
+                    .putR("schedulers", nano.schedulers().size())
+                    .putR("listeners", nano.listeners().values().stream().mapToLong(Collection::size).sum())
+                    .putR("cores", Runtime.getRuntime().availableProcessors())
+                    .putR("usedMemory", nano.usedMemoryMB() + "mb")
+                    .putR("threadsNano", activeNanoThreads())
+                    .putR("threadsActive", activeCarrierThreads())
+                    .putR("threadsOther", ManagementFactory.getThreadMXBean().getThreadCount() - activeCarrierThreads())
+                    .putR("encoding", Charset.defaultCharset().toString())
+                    .putR("timezone", TimeZone.getDefault().getID())
+                    .putR("locale", Locale.getDefault().toString())
+                    .putR("user", event.context().asString("user_name"))
+                    .putR("java", event.context().asString("java_version"))
+                    .putR("arch", event.context().asString("os_arch"))
+                    .putR("os", event.context().asString("os_name") + " - " + event.context().asString("os_version"))).respond(event)))
         ;
     }
 }

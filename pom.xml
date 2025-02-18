@@ -16,7 +16,7 @@
         <project.reporting.outputEncoding>${project.encoding}</project.reporting.outputEncoding>
 
         <!-- PRODUCTION -->
-        <nano.version>2024.0.5</nano.version>
+        <nano.version>2025.0.4</nano.version>
 
         <!-- BUILD -->
         <maven-compiler-plugin.version>3.13.0</maven-compiler-plugin.version>
