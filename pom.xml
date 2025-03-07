@@ -16,10 +16,10 @@
         <project.reporting.outputEncoding>${project.encoding}</project.reporting.outputEncoding>
 
         <!-- PRODUCTION -->
-        <nano.version>2025.0.4</nano.version>
+        <nano.version>2025.0.6</nano.version>
 
         <!-- BUILD -->
-        <maven-compiler-plugin.version>3.13.0</maven-compiler-plugin.version>
+        <maven-compiler-plugin.version>3.14.0</maven-compiler-plugin.version>
         <native-image-maven-plugin.version>0.10.2</native-image-maven-plugin.version>
         <maven.compiler.source>${java-version}</maven.compiler.source>
         <maven.compiler.target>${java-version}</maven.compiler.target>

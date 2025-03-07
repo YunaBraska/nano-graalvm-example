@@ -2,7 +2,7 @@ package berlin.yuna.nativeexample;
 
 import berlin.yuna.typemap.model.LinkedTypeMap;
 import org.nanonative.nano.core.Nano;
-import org.nanonative.nano.services.http.HttpService;
+import org.nanonative.nano.services.http.HttpServer;
 import org.nanonative.nano.services.http.model.HttpObject;
 import org.nanonative.nano.services.metric.logic.MetricService;
 
@@ -11,14 +11,14 @@ import java.nio.charset.Charset;
 import java.time.Instant;
 import java.util.*;
 
-import static org.nanonative.nano.core.model.Context.CONFIG_LOG_FORMATTER;
-import static org.nanonative.nano.core.model.Context.CONFIG_LOG_LEVEL;
 import static org.nanonative.nano.core.model.NanoThread.activeCarrierThreads;
 import static org.nanonative.nano.core.model.NanoThread.activeNanoThreads;
 import static org.nanonative.nano.helper.NanoUtils.formatDuration;
-import static org.nanonative.nano.helper.logger.model.LogLevel.DEBUG;
-import static org.nanonative.nano.services.http.HttpService.CONFIG_SERVICE_HTTP_PORT;
-import static org.nanonative.nano.services.http.HttpService.EVENT_HTTP_REQUEST;
+import static org.nanonative.nano.services.http.HttpServer.CONFIG_SERVICE_HTTP_PORT;
+import static org.nanonative.nano.services.http.HttpServer.EVENT_HTTP_REQUEST;
+import static org.nanonative.nano.services.logging.LogService.CONFIG_LOG_FORMATTER;
+import static org.nanonative.nano.services.logging.LogService.CONFIG_LOG_LEVEL;
+import static org.nanonative.nano.services.logging.model.LogLevel.DEBUG;
 
 public class Main {
 
@@ -27,7 +27,7 @@ public class Main {
             CONFIG_LOG_LEVEL, DEBUG, // or "OFF", "FATAL", "ERROR", "WARN", "INFO", "DEBUG", "TRACE", "ALL"
             CONFIG_LOG_FORMATTER, "console", // or "json"
             CONFIG_SERVICE_HTTP_PORT, "8080" // or any other port
-        ), new MetricService(), new HttpService());
+        ), new MetricService(), new HttpServer());
 
         nano.context(Main.class)
 
@@ -42,7 +42,7 @@ public class Main {
                             "timestamp", Instant.now()
                         )).respond(event);
                     else
-                        event.cache().put("username", System.getProperty("user.name"));
+                        event.put("username", System.getProperty("user.name"));
                 })
             )
 
@@ -53,7 +53,7 @@ public class Main {
                 .ifPresent(request -> request.response()
                     .statusCode(200)
                     .body(request.bodyAsJson().asMap()
-                        .putR("username", event.cache().asString("username"))
+                        .putR("username", event.asString("username"))
                         .putR("memory", nano.heapMemoryUsage())
                     ).respond(event))
             )
@@ -68,7 +68,7 @@ public class Main {
                         .orElse(100_000_00);  // Oh, the sweet chaos
                     long start = System.currentTimeMillis();
                     Arrays.sort(new Random().ints(size, 0, 1_000_000).toArray()); // May the JVM have mercy
-                    event.context().logger().info(() -> "Testing load [{}]", size);
+                    event.context().info(() -> "Testing load [{}]", size);
                     request.response()
                         .statusCode(200)
                         .body(Map.of(
