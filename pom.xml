@@ -16,10 +16,12 @@
         <project.reporting.outputEncoding>${project.encoding}</project.reporting.outputEncoding>
 
         <!-- PRODUCTION -->
-        <nano.version>2025.0.6</nano.version>
+        <nano.version>2025.11.3131219</nano.version>
+        <devconsole.version>2025.11.3141539</devconsole.version>
 
         <!-- BUILD -->
-        <maven-compiler-plugin.version>3.14.0</maven-compiler-plugin.version>
+        <maven-assembly-plugin.version>3.7.1</maven-assembly-plugin.version>
+        <maven-compiler-plugin.version>3.14.1</maven-compiler-plugin.version>
         <native-image-maven-plugin.version>0.10.2</native-image-maven-plugin.version>
         <maven.compiler.source>${java-version}</maven.compiler.source>
         <maven.compiler.target>${java-version}</maven.compiler.target>
@@ -32,6 +34,11 @@
             <artifactId>nano</artifactId>
             <version>${nano.version}</version>
         </dependency>
+<!--        <dependency>-->
+<!--            <groupId>org.nanonative</groupId>-->
+<!--            <artifactId>devconsole</artifactId>-->
+<!--            <version>${devconsole.version}</version>-->
+<!--        </dependency>-->
     </dependencies>
 
     <build>
@@ -49,7 +56,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-assembly-plugin</artifactId>
-                <version>3.6.0</version>
+                <version>${maven-assembly-plugin.version}</version>
                 <configuration>
                     <archive>
                         <manifest>

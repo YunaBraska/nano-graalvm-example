@@ -1,6 +1,7 @@
 package berlin.yuna.nativeexample;
 
 import berlin.yuna.typemap.model.LinkedTypeMap;
+//import org.nanonative.devconsole.service.DevConsoleService;
 import org.nanonative.nano.core.Nano;
 import org.nanonative.nano.services.http.HttpServer;
 import org.nanonative.nano.services.http.model.HttpObject;
@@ -27,16 +28,26 @@ public class Main {
             CONFIG_LOG_LEVEL, DEBUG, // or "OFF", "FATAL", "ERROR", "WARN", "INFO", "DEBUG", "TRACE", "ALL"
             CONFIG_LOG_FORMATTER, "console", // or "json"
             CONFIG_SERVICE_HTTP_PORT, "8080" // or any other port
-        ), new MetricService(), new HttpServer());
+        ),
+            new MetricService(),
+            new HttpServer()
+//            new DevConsoleService()
+        );
 
         nano.context(Main.class)
 
+            // CORS
+            .subscribeEvent(EVENT_HTTP_REQUEST, event -> event.payloadOpt()
+                .filter(HttpObject::isMethodOptions)
+                .ifPresent(request -> request.createCorsResponse().respond(event))
+            )
+
             // HTTP Auth
-            .subscribeEvent(EVENT_HTTP_REQUEST, event -> event.payloadOpt(HttpObject.class)
+            .subscribeEvent(EVENT_HTTP_REQUEST, event -> event.payloadOpt()
                 .filter(request -> request.pathMatch("/api/**"))
                 .ifPresent(request -> {
                     if (request.authToken() == null || !request.authToken().equals("dummy_token"))
-                        request.response().statusCode(403).body(Map.of(
+                        request.createCorsResponse().statusCode(403).body(Map.of(
                             "id", request.bodyAsJson().asUUIDOpt("id").orElse(UUID.randomUUID()),
                             "message", "Unauthorized access",
                             "timestamp", Instant.now()
@@ -47,10 +58,10 @@ public class Main {
             )
 
             // HTTP /api/data - mirrors data
-            .subscribeEvent(EVENT_HTTP_REQUEST, event -> event.payloadOpt(HttpObject.class)
+            .subscribeEvent(EVENT_HTTP_REQUEST, event -> event.payloadOpt()
                 .filter(HttpObject::isMethodPost)
                 .filter(request -> request.pathMatch("/api/data"))
-                .ifPresent(request -> request.response()
+                .ifPresent(request -> request.createCorsResponse()
                     .statusCode(200)
                     .body(request.bodyAsJson().asMap()
                         .putR("username", event.asString("username"))
@@ -59,7 +70,7 @@ public class Main {
             )
 
             //HTTP /api/load - starts heavy load
-            .subscribeEvent(EVENT_HTTP_REQUEST, event -> event.payloadOpt(HttpObject.class)
+            .subscribeEvent(EVENT_HTTP_REQUEST, event -> event.payloadOpt()
                 .filter(HttpObject::isMethodGet)
                 .filter(request -> request.pathMatch("/load1"))
                 .ifPresent(request -> {
@@ -69,7 +80,7 @@ public class Main {
                     long start = System.currentTimeMillis();
                     Arrays.sort(new Random().ints(size, 0, 1_000_000).toArray()); // May the JVM have mercy
                     event.context().info(() -> "Testing load [{}]", size);
-                    request.response()
+                    request.createCorsResponse()
                         .statusCode(200)
                         .body(Map.of(
                             "load", size,
@@ -80,16 +91,16 @@ public class Main {
             )
 
             // HTTP /hello
-            .subscribeEvent(EVENT_HTTP_REQUEST, event -> event.payloadOpt(HttpObject.class)
+            .subscribeEvent(EVENT_HTTP_REQUEST, event -> event.payloadOpt()
                 .filter(HttpObject::isMethodGet)
                 .filter(request -> request.pathMatch("/hello"))
-                .ifPresent(request -> request.response().statusCode(200).body(Map.of("name", event.context().asString("user_name"))).respond(event)))
+                .ifPresent(request -> request.createCorsResponse().statusCode(200).body(Map.of("name", event.context().asString("user_name"))).respond(event)))
 
             // HTTP /info
-            .subscribeEvent(EVENT_HTTP_REQUEST, event -> event.payloadOpt(HttpObject.class)
+            .subscribeEvent(EVENT_HTTP_REQUEST, event -> event.payloadOpt()
                 .filter(HttpObject::isMethodGet)
                 .filter(request -> request.pathMatch("/info"))
-                .ifPresent(request -> request.response().statusCode(200).body(new LinkedTypeMap()
+                .ifPresent(request -> request.createCorsResponse().statusCode(200).body(new LinkedTypeMap()
                     .putR("status", nano.isReady() ? "UP" : "DOWN")
                     .putR("pid", nano.pid())
                     .putR("services", nano.services().size())
