@@ -1,7 +1,7 @@
 package berlin.yuna.nativeexample;
 
 import berlin.yuna.typemap.model.LinkedTypeMap;
-//import org.nanonative.devconsole.service.DevConsoleService;
+import org.nanonative.devconsole.service.DevConsoleService;
 import org.nanonative.nano.core.Nano;
 import org.nanonative.nano.services.http.HttpServer;
 import org.nanonative.nano.services.http.model.HttpObject;
@@ -30,8 +30,8 @@ public class Main {
             CONFIG_SERVICE_HTTP_PORT, "8080" // or any other port
         ),
             new MetricService(),
-            new HttpServer()
-//            new DevConsoleService()
+            new HttpServer(),
+            new DevConsoleService()
         );
 
         nano.context(Main.class)

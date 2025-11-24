@@ -18,6 +18,7 @@
         <!-- PRODUCTION -->
         <nano.version>2025.11.3131219</nano.version>
         <devconsole.version>2025.11.3141539</devconsole.version>
+        <codegen-concrete-classes-maven-plugin.version>2025.11.3280300</codegen-concrete-classes-maven-plugin.version>
 
         <!-- BUILD -->
         <maven-assembly-plugin.version>3.7.1</maven-assembly-plugin.version>
@@ -34,16 +35,33 @@
             <artifactId>nano</artifactId>
             <version>${nano.version}</version>
         </dependency>
-<!--        <dependency>-->
-<!--            <groupId>org.nanonative</groupId>-->
-<!--            <artifactId>devconsole</artifactId>-->
-<!--            <version>${devconsole.version}</version>-->
-<!--        </dependency>-->
+        <dependency>
+            <groupId>org.nanonative</groupId>
+           <artifactId>devconsole</artifactId>
+           <version>${devconsole.version}</version>
+        </dependency>
     </dependencies>
 
     <build>
         <finalName>${project.name}-no-dependencies</finalName>
         <plugins>
+            <plugin>
+                <groupId>io.github.absketches</groupId>
+                <artifactId>codegen-concrete-classes-maven-plugin</artifactId>
+                <version>${codegen-concrete-classes-maven-plugin.version}</version>
+                <executions>
+                    <execution>
+                        <id>nano-service-index</id>
+                        <phase>process-classes</phase>
+                        <goals>
+                            <goal>generate</goal>
+                        </goals>
+                        <configuration>
+                            <baseClasses>org.nanonative.nano.core.model.Service</baseClasses>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
