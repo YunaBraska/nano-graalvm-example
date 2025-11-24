@@ -17,8 +17,8 @@
 
         <!-- PRODUCTION -->
         <nano.version>2025.11.3131219</nano.version>
-        <devconsole.version>2025.11.3141539-SNAPSHOT2</devconsole.version>
-        <codegen-concrete-classes-maven-plugin.version>2.0.0</codegen-concrete-classes-maven-plugin.version>
+        <devconsole.version>2025.11.3141539</devconsole.version>
+        <codegen-concrete-classes-maven-plugin.version>2025.11.3280300</codegen-concrete-classes-maven-plugin.version>
 
         <!-- BUILD -->
         <maven-assembly-plugin.version>3.7.1</maven-assembly-plugin.version>
@@ -56,6 +56,9 @@
                         <goals>
                             <goal>generate</goal>
                         </goals>
+                        <configuration>
+                            <baseClasses>org.nanonative.nano.core.model.Service</baseClasses>
+                        </configuration>
                     </execution>
                 </executions>
             </plugin>
